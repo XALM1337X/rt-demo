@@ -18,7 +18,8 @@ migrate:
 
 .PHONY: run 
 run: 
-	docker exec -d web ./main
+#	docker exec -d web ./main
+	docker exec  web ./main
 
 # TODO: maybe move this to a separate container within the docker network 
 .PHONY: test 

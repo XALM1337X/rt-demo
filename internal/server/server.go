@@ -9,8 +9,8 @@ import (
 	"github.com/gorilla/mux"
 	"errors"
 	"fmt"
-	"os"
 	"regexp"
+	"strconv"
 )
 
 var (
@@ -95,18 +95,25 @@ func FibHandler(w http.ResponseWriter, r *http.Request) {
 		//if it does return it.
 		w.Header().Set("Content-Type","application/json")
 		w.Write(val)
+		return
+	} 
+	
+	//Calculate it
+	//TODO
+	res, fib_err := FibGenerate(req["lookup"].(string))
+	if fib_err != nil {
+		w.Write([]byte(fib_err.Error()))
+		return
+	}
+	fmt.Println(fmt.Sprintf("%v", res))
+	//Store it
+	/*insert_err := DbInsert(req["lookup"].(string), res, db)
+	if insert_err != nil {
+		w.Write([]byte(insert_err.Error()))
 	} else {
-		//Calculate it
-		//TODO
-
-		//Store it
-		insert_err := DbInsert(req["lookup"].(string), "1337", db)
-		if insert_err != nil {
-			w.Write([]byte(insert_err.Error()))
-		} else {
-			w.Write([]byte("Successfully added entry to db"))
-		}
-	}	
+		w.Write([]byte("Successfully added entry to db"))
+	}*/
+	
 }
 
 
@@ -126,10 +133,72 @@ func CheckCache(lookup string, db *sql.DB) ([]byte, bool, error) {
 }
 
 
-func FibGenerate(nth_fib_str string) {
-
+func FibGenerate(nth_fib_str string) (string,error) {
+	n, n_err := strconv.Atoi(nth_fib_str)
+	store := "0"
+	current := "0"
+	previous := "0"
+	if n_err != nil {
+		return "", errors.New(fmt.Sprintf("Error:FibGenerate: %s", n_err.Error()))
+	}
+	if n < 1 {
+		return "", errors.New(fmt.Sprintf("Error:FibGenerate: Value must be greater than 0."))
+	} else if n == 1 {
+		return "0", nil
+	} else {
+		for i:=0; i<n; i++ {
+			if i == 0 {
+				continue
+			} else if i == 1 {
+				current = "1"
+			} else {
+				current, previous, store = FibCrunchStrings(current, previous, store)
+			}			
+		}
+	}
+	return strconv.Itoa(current), nil
 }
 
+func FibCrunchStrings(current string, previous string, store string) (string, string, string, error) {
+/*
+	store = current
+	current += previous
+	previous = store
+*/
+
+	carry := 0
+	crunch1 := 0 
+	crunch2 := 0
+	result := 0 
+	remainder := 0
+	var new_str string = ""
+	for i:=len(current); i > 0; i-- {
+		if len(previous) > 0 {
+			crunch1 = strconv.Atoi(current[i-1])
+			crunch2 = strconv.Atoi(previous[len(previous)-1])
+			result = crunch1+crunch2+carry
+			carry = 0
+			remainder = 0
+
+			if result >= 10 {
+				remainder = result % 10
+				carry++
+				ascii, err := strconv.Atoi(remainder)
+				if err != nil {
+					return "","","",err.Error()
+				}
+				new_str = append(new_str, ascii)
+			}
+
+
+
+		} else {
+
+		}
+		
+	}
+
+}
 
 func DbInsert(key string, value string, db *sql.DB) error {
 	sqlStatement := `INSERT INTO event (fib_num, result)
