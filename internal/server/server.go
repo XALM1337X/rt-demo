@@ -109,4 +109,53 @@ func FibHandler(w http.ResponseWriter, r *http.Request) {
 	}	
 }
 
+
+func CheckCache(lookup string, db *sql.DB) ([]byte, bool, error) {
+	var fib TFibParse
+	query := "SELECT fib_num, result FROM event WHERE fib_num='"+lookup+"';"
+	err := db.QueryRow(query).Scan(&fib.Nth_fib, &fib.Nth_fib_result)
+	if err != nil {
+		return []byte{}, false, err
+	}
+	fib.CacheStatus = "Entry found"
+	bytes, marsh_err := json.Marshal(fib)
+	if marsh_err != nil {
+		return []byte{}, false, errors.New(fmt.Sprintf("Error: %s", marsh_err.Error()))
+	}
+	return bytes, true, nil
+}
+
+
+func FibGenerate(nth_fib_str string) {
+
+}
+
+
+func DbInsert(key string, value string, db *sql.DB) error {
+	sqlStatement := `INSERT INTO event (fib_num, result)
+						   VALUES ($1, $2)`
+
+	_, err := db.Exec(sqlStatement, key, value)
+	if err != nil {
+		return errors.New(fmt.Sprintf("Error:DbInsert %s", err.Error()))
+	} 
+	return nil
+}
+
+
+
+func DbConnect() (*sql.DB, error) {
+	var (
+		host     = "postgres"
+  		port     = 5432
+  		user     = "docker"
+	    password = "docker"
+  		dbname   = "docker"
+	)
+	psqlInfo := fmt.Sprintf("postgresql://%v:%v@%v:%v/%v?sslmode=disable", user, password, host, port, dbname)
+	db, err := sql.Open("postgres", psqlInfo)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Error: %s", err.Error()))	
+	}
+	return db, nil
 }
