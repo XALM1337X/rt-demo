@@ -8,8 +8,8 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
   \connect $APP_DB_NAME $APP_DB_USER
   BEGIN;
     CREATE TABLE IF NOT EXISTS event (
-	  fib_num CHAR(10) NOT NULL PRIMARY KEY,
-	  result CHAR(26) NOT NULL,
+	  fib_num VARCHAR(10) NOT NULL PRIMARY KEY,
+	  result VARCHAR(26) NOT NULL,
 	  UNIQUE(fib_num)
 	);
 	CREATE INDEX idx_event_fib_num ON event (fib_num);
