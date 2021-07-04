@@ -5,9 +5,24 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
-
+	"database/sql"
 	"github.com/gorilla/mux"
+	"errors"
+	"fmt"
+	"os"
+	"regexp"
 )
+
+var (
+	re = regexp.MustCompile("sql: no rows")
+)
+type TFibParse struct {
+	
+	Nth_fib string `json:"nth_fib"`
+	Nth_fib_result string  `json:"nth_fib_result"`
+	CacheStatus string `json:"cache_status"`
+}
+
 
 func NewHTTPServer(addr string) *http.Server {
 	r := mux.NewRouter()
