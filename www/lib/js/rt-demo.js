@@ -6,7 +6,6 @@ var RTDEMO = {
         var input = document.getElementById("t_fib_in").value
         var parse = parseInt(input);
         if (isNaN(parse)) {
-            console.log("error");
             document.getElementById("t_fib_in").value =""
             document.getElementById("ret_block").innerHTML="Error must enter interger value.";
         } else {
