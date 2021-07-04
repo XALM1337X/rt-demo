@@ -69,5 +69,44 @@ func FibHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Error key not found in req map."))
 		return
 	}
-	//w.Write([]byte(req["lookup"].(string)))
+	db, err2 := DbConnect()
+	if err2 != nil {
+		w.Write([]byte(fmt.Sprintf("Error: %s", err2.Error())))
+	}
+	defer db.Close()
+
+	err3 := db.Ping()
+	if err3 != nil {
+		w.Write([]byte(fmt.Sprintf("Error: %s", err3.Error())))
+		return
+	} 
+
+	//DB connected
+
+
+	//Check if key(n'th fib number) exists.
+	val, exists, err_cache := CheckCache(req["lookup"].(string), db)
+	if err_cache != nil && !re.MatchString(err_cache.Error()){
+		w.Write([]byte(err_cache.Error()))
+		return
+	}
+
+	if exists {
+		//if it does return it.
+		w.Header().Set("Content-Type","application/json")
+		w.Write(val)
+	} else {
+		//Calculate it
+		//TODO
+
+		//Store it
+		insert_err := DbInsert(req["lookup"].(string), "1337", db)
+		if insert_err != nil {
+			w.Write([]byte(insert_err.Error()))
+		} else {
+			w.Write([]byte("Successfully added entry to db"))
+		}
+	}	
+}
+
 }
