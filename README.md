@@ -7,14 +7,12 @@
 3) build compiles the go binary inside of the appropriate container 
 4) run starts the server process inside of the web container
 
-##Testing
-Run `make test` after running the command in the "To Run the Project" section
-
+##Testing Go to browser and type in http://<ip>:<port>/  to get the front end UI
 ##Troubleshooting 
 ###Project failed to run because of new dependency
 Example: 
 ```
-dylan@dylan-MS-7C37:~/projects/rt-demo$ make clean prepare build run
+root@TestDev:~/rt-demo$ make clean prepare build run
 docker-compose stop postgres web
 Stopping postgres ... done
 Stopping web      ... done
