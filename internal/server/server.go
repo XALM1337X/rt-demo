@@ -9,8 +9,9 @@ import (
 	"github.com/gorilla/mux"
 	"errors"
 	"fmt"
-	"os"
 	"regexp"
+	"strconv"
+	"time"
 )
 
 var (
@@ -53,6 +54,7 @@ func EntryHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func FibHandler(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
 	var req map[string]interface{}
 	w.Header().Set("Content-Type", "text/html")
 	body, err := ioutil.ReadAll(r.Body)
@@ -69,20 +71,18 @@ func FibHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("Error key not found in req map."))
 		return
 	}
+	//connect to DB
 	db, err2 := DbConnect()
 	if err2 != nil {
 		w.Write([]byte(fmt.Sprintf("Error: %s", err2.Error())))
 	}
 	defer db.Close()
-
+	//Ping it (officially open connection)
 	err3 := db.Ping()
 	if err3 != nil {
 		w.Write([]byte(fmt.Sprintf("Error: %s", err3.Error())))
 		return
 	} 
-
-	//DB connected
-
 
 	//Check if key(n'th fib number) exists.
 	val, exists, err_cache := CheckCache(req["lookup"].(string), db)
@@ -93,43 +93,153 @@ func FibHandler(w http.ResponseWriter, r *http.Request) {
 
 	if exists {
 		//if it does return it.
-		w.Header().Set("Content-Type","application/json")
-		w.Write(val)
-	} else {
-		//Calculate it
-		//TODO
-
-		//Store it
-		insert_err := DbInsert(req["lookup"].(string), "1337", db)
-		if insert_err != nil {
-			w.Write([]byte(insert_err.Error()))
-		} else {
-			w.Write([]byte("Successfully added entry to db"))
-		}
+		duration := time.Since(start)
+		w.Write([]byte(fmt.Sprintf("Successfully retrieved from database: Key: %v , Value: %v, Elapsed Time: %v", val.Nth_fib, val.Nth_fib_result, duration)))
+		return
+	} 
+	
+	//Calculate it
+	//Cheese the off by 1 thats not a real off by 1
+	//Typically fibbonaci starts at 1, mine starts at 0
+	cheese_req, cheese_err := strconv.Atoi(req["lookup"].(string))
+	if cheese_err != nil {
+		w.Write([]byte(cheese_err.Error()))
+	}
+	cheese_format := cheese_req + 1 
+	cheese := strconv.Itoa(cheese_format)
+	res, fib_err := FibGenerate(cheese)
+	if fib_err != nil {
+		w.Write([]byte(fib_err.Error()))
+		return
 	}	
+	
+	//Store it
+	insert_err := DbInsert(req["lookup"].(string), res, db)
+	if insert_err != nil {
+		w.Write([]byte(insert_err.Error()))
+	} else {
+		duration := time.Since(start)
+		w.Write([]byte(fmt.Sprintf("Successfully stored in database: Key: %v , Value: %v, Elapsed Time: %v", req["lookup"].(string), res, duration)))
+	}
+	
 }
 
 
-func CheckCache(lookup string, db *sql.DB) ([]byte, bool, error) {
+func CheckCache(lookup string, db *sql.DB) (TFibParse, bool, error) {
 	var fib TFibParse
 	query := "SELECT fib_num, result FROM event WHERE fib_num='"+lookup+"';"
 	err := db.QueryRow(query).Scan(&fib.Nth_fib, &fib.Nth_fib_result)
 	if err != nil {
-		return []byte{}, false, err
+		return fib, false, err
 	}
 	fib.CacheStatus = "Entry found"
-	bytes, marsh_err := json.Marshal(fib)
-	if marsh_err != nil {
-		return []byte{}, false, errors.New(fmt.Sprintf("Error: %s", marsh_err.Error()))
+	return fib, true, nil
+}
+
+
+func FibGenerate(nth_fib_str string) (string,error) {
+	n, n_err := strconv.Atoi(nth_fib_str)
+	store := "0"
+	current := "0"
+	previous := "0"
+	var err error
+	if n_err != nil {
+		return "", errors.New(fmt.Sprintf("Error:FibGenerate: %s", n_err.Error()))
 	}
-	return bytes, true, nil
+	if n < 1 {
+		return "", errors.New(fmt.Sprintf("Error:FibGenerate: Value must be greater than 0."))
+	} else if n == 1 {
+		return "0", nil
+	} else {
+		for i:=0; i<n; i++ {
+			if i == 0 {
+				continue
+			} else if i == 1 {
+				current = "1"
+			} else {
+				store = current
+				current, err = FibCrunchStrings(current, previous)
+				if err != nil {
+					return "", err
+				}
+				previous = store
+			}			
+		}
+	}
+	return current, nil
 }
 
+func FibCrunchStrings(current string, previous string) (string, error) {
 
-func FibGenerate(nth_fib_str string) {
+	carry := 0
+	crunch1 := 0 
+	crunch2 := 0
+	result := 0 
+	remainder := 0
+	var new_str_rev string = ""
+	var err_conv1, err_conv2, err_conv3 error
+
+	for i:=len(current)-1; i >= 0; i-- {
+		if len(previous) > 0 {
+			crunch1, err_conv1 = strconv.Atoi(string(current[i]))
+			if err_conv1 != nil {
+				return "",err_conv1
+			}
+			crunch2, err_conv2 = strconv.Atoi(string(previous[len(previous)-1]))
+			if err_conv2 != nil {
+				return "",err_conv2
+			}
+			result = crunch1+crunch2+carry
+			carry = 0
+			remainder = 0
+
+			if result >= 10 {
+				remainder = result % 10
+				carry++
+				ascii := strconv.Itoa(remainder)				
+				new_str_rev += ascii
+			} else {
+				new_str_rev += strconv.Itoa(result)
+			}
+			if len(previous) > 0 {
+				previous = previous[:len(previous)-1]
+			}			
+			
+		} else {
+			if carry > 0 {
+				crunch1, err_conv3 = strconv.Atoi(string(current[i]))
+				if err_conv3 != nil {
+					return "",err_conv3
+				}
+				result = crunch1 + carry
+				carry = 0
+				remainder = 0
+
+				if result >= 10 {
+					remainder = result % 10
+					carry++
+					ascii := strconv.Itoa(remainder)				
+					new_str_rev += ascii
+				} else {
+					new_str_rev += strconv.Itoa(result)
+				}
+			} else {
+				new_str_rev += string(current[i])
+			}
+		}
+
+		if i == 0 && carry > 0 && len(previous) < 1{
+			new_str_rev += "1"			
+		}
+
+	}
+	ret_string :=""
+	for i:=len(new_str_rev)-1; i>=0; i-- {
+		ret_string += string(new_str_rev[i])
+	}
+	return ret_string, nil
 
 }
-
 
 func DbInsert(key string, value string, db *sql.DB) error {
 	sqlStatement := `INSERT INTO event (fib_num, result)
@@ -141,9 +251,6 @@ func DbInsert(key string, value string, db *sql.DB) error {
 	} 
 	return nil
 }
-
-
-
 func DbConnect() (*sql.DB, error) {
 	var (
 		host     = "postgres"
