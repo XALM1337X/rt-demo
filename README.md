@@ -7,7 +7,7 @@
 3) build compiles the go binary inside of the appropriate container 
 4) run starts the server process inside of the web container
 
-##Testing Go to browser and type in http://ip:port/  to get the front end UI
+##Testing Go to browser and type in http://ip:6543/  to get the front end UI
 ##Troubleshooting 
 ###Project failed to run because of new dependency
 Example: 
